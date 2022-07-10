@@ -7,8 +7,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <sys/types.h>
 
-#define PORT 8080
+#define PORT 2000
 
 /*
     limite máximo do tamanho do buffer que o servidor deve ter 
@@ -108,7 +109,7 @@ void metodo(mensagem_pedido mensagem){
 
 int main(){
     //armazena o file descriptor retornado pela função socket do servidor
-    int socket_novo;          
+    int socket_servidor;          
     //armazena o file descriptor retornado pela função socket do cliente
     int socket_cliente;   //Socket do cliente
     //Estrutura de dados da biblioteca <netinet/in.h> - Servidor
@@ -118,7 +119,9 @@ int main(){
     //tamanho do endereço do socket do cliente
     int tamanho_endereco = sizeof(endereco_cliente);
     //mensagens de escrita e leitura 
-    char mensagem_write[200], mensagem_read[200];
+    char mensagem_write[MAXBUF], mensagem_read[MAXBUF];
+    //resultado da função receive
+    int receive_result;
 
     /*
         chama a função socket(domínio, tipo, protocolo) da biblioteca
@@ -127,33 +130,57 @@ int main(){
         0: protocolo não especificado padrão que vai ser escolhido pela função
             como o mais apropriado
     */
-    socket_novo = socket(AF_INET, SOCK_STREAM, 0);    //Cria socket (AF_INET: ipv4; SOCK_STREAM: TCP; 0: IP)
+    socket_servidor = socket(AF_INET, SOCK_STREAM, 0);    //Cria socket (AF_INET: ipv4; SOCK_STREAM: TCP; 0: IP)
 
-    bzero(&endereco_servidor, sizeof(endereco_servidor));             //Zera tudo que está no self (\0)
+    if(socket_servidor==-1){
+        perror("socket()");
+        exit(1);
+    }else{
+        printf("Socket servidor criado com sucesso");
+    }
+
+    // bzero(&endereco_servidor, sizeof(endereco_servidor));             //Zera tudo que está no self (\0)
     
     endereco_servidor.sin_family = AF_INET;
     endereco_servidor.sin_port = htons(PORT);
-    endereco_servidor.sin_addr.s_addr = INADDR_ANY;
+    // endereco_servidor.sin_addr.s_addr = INADDR_ANY;
+    memset(endereco_servidor.sin_zero, 0x0, 0);
     
-    bind(socket_novo, (struct sockaddr*)&endereco_servidor, sizeof(endereco_servidor));  
-    listen(socket_novo, 5);    
+    if(bind(socket_servidor, (struct sockaddr*)&endereco_servidor, sizeof(endereco_servidor))==-1){ //!!!!!!!!!!!!! NÃO ESTÁ FUNCIONANDO 
+        perror("bind()");
+        exit(1);
+    } 
+    listen(socket_servidor, 5);    
 
-
-    while(1){
-        socket_cliente = accept(socket_novo, (struct sockaddr*)&endereco_servidor, (socklen_t*)&tamanho_endereco);
-        printf("Cliente conectado: %ls \n", &socket_cliente);
-        recv(socket_cliente, mensagem_read, MAXBUF, MSG_OOB);
-        printf("Mensagem recebida do cliente: %s \n", mensagem_read);
-        ler_mensagem(mensagem_read);
-        metodo(mensagem_cliente);
-        strcpy(mensagem_write, escrever_mensagem());
-        send(socket_cliente, mensagem_write, strlen(mensagem_write)+1, MSG_OOB);
-        close(socket_cliente);
+    if( socket_cliente = accept(socket_servidor, (struct sockaddr*)&endereco_cliente, &tamanho_endereco)==-1){
+        perror("accept()");
+        exit(1);
     }
     
+    printf("Cliente conectado: %ls \n", &socket_cliente);
     
+    strcpy(mensagem_write, "Você foi conectado ao servidor");
 
+    if(send(socket_cliente, mensagem_write, strlen(mensagem_write), 0)){
+        while(1){
+        memset(mensagem_read, 0x0, MAXBUF);
+        if(receive_result = recv(socket_cliente, mensagem_read, MAXBUF, 0)>0){
+            mensagem_read[receive_result] = '\0';
+            printf("Mensagem recebida do cliente: %s \n", mensagem_read);
+            ler_mensagem(mensagem_read);
+            metodo(mensagem_cliente);
+            strcpy(mensagem_write, escrever_mensagem());
+            send(socket_cliente, mensagem_write, strlen(mensagem_write)+1, 0);
+            close(socket_cliente);
+            break;
+        }
+     }
+    }
     
+       
+    printf("Servidor encerrando.......");
+    close(socket_servidor);
+
     return 0;
     
 }
