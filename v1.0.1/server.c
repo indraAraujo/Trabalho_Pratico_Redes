@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -17,6 +18,8 @@
 #define PORT 8080                   //
 struct sockaddr_in endereco_server; //
 struct sockaddr_in endereco_cliente;//
+int socket_cliente;
+int socket_server;
 
 /*
     Limite máximo do tamanho do buffer que o servidor deve ter 
@@ -51,16 +54,17 @@ mensagem_pedido mensagem_cliente;
 
 
 //                  FUNÇÕES E PROCEDIMENTOS
+void *atribuirCliente(); //Inicia o tratamento do cliente em uma thread do servidor
 void ler_mensagem(char mensagem[]);     //Separa o que nos interessa da mensagem do cliente
 int metodo(mensagem_pedido mensagem);   //Seleciona o método ideal para resposta
 void metodo_get(char solicitacao[]);    //Método get
-void escrever_mensagem();       //Monta bonitinho a mensagem a ser enviada pro cliente
+void escrever_mensagem();       //Monta, baseada na estrutura do protocolo, a mensagem a ser enviada pro cliente
+void *atribuirCliente ();
 
 int main(int argc, char *argv[]){
-    printf("HELLO WORLD!\n");
-
+   pthread_t thread_id;
 //                  CRIAÇÃO DO SOCKET
-    int socket_server = socket(AF_INET, SOCK_STREAM, 0);
+     socket_server = socket(AF_INET, SOCK_STREAM, 0);
         if(socket_server==-1){
             perror("[!] ERRO AO CRIAR O SOCKET\n");
             close(socket_server);
@@ -87,7 +91,7 @@ int main(int argc, char *argv[]){
     
 //                  CONECTANDO . . .
     int tamanho = sizeof(struct sockaddr_in);
-    int socket_cliente;
+    
 
     while ((socket_cliente = accept(socket_server, (struct sockaddr *)&endereco_cliente, (socklen_t *)&tamanho))){
 //  Aceita conexões e salva em um novo socket
@@ -98,9 +102,19 @@ int main(int argc, char *argv[]){
         } else {
             printf("Conexão aceita com sucesso! :D\nCliente: %i\n",socket_cliente);
             //printf("Número de conexões: %i",);
+            pthread_create(&thread_id, NULL, atribuirCliente, NULL);
         }
+    }
+    printf("ENCERRANDO SERVIDOR . . . \n\n");
+    close(socket_server);
 
-        memset(mensagem_read, 0x0, MAXBUF);
+    return 0;
+}
+
+void *atribuirCliente (){
+    printf("NOVA THREAD DO SERVIDOR CRIADA");
+
+    memset(mensagem_read, 0x0, MAXBUF);
             int receive_result = recv(socket_cliente, mensagem_read, MAXBUF, 0);
                 if (receive_result < 0){
                     perror("[!] MENSAGEM NÃO RECEBIDA\n");
@@ -148,13 +162,8 @@ int main(int argc, char *argv[]){
                     send(socket_cliente,mensagem, strlen(mensagem)+1, 0);
                     
                     close(socket_cliente);
-                    break;
                 }
-    }
-    printf("ENCERRANDO SERVIDOR . . . \n\n");
-    close(socket_server);
-
-    return 0;
+    pthread_exit(NULL);
 }
 
 void ler_mensagem(char mensagem[]){
