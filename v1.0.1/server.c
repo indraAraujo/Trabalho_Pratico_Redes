@@ -1,6 +1,6 @@
 /*  Trabalho Pratico - Redes 2022/1
         Douglas Aquino      - 1901570782
-        Indra Rani Araujo   - 190
+        Indra Rani Araujo   - 1901560662
 */
 
 //                  BIBLIOTECAS 
@@ -54,10 +54,10 @@ mensagem_pedido mensagem_cliente;
 void ler_mensagem(char mensagem[]);     //Separa o que nos interessa da mensagem do cliente
 int metodo(mensagem_pedido mensagem);   //Seleciona o método ideal para resposta
 void metodo_get(char solicitacao[]);    //Método get
-void escrever_mensagem();       //Monta bonitinho a mensagem a ser enviada pro cliente
+void escrever_mensagem();       //Monta na estrutura correta a mensagem a ser enviada pro cliente
 
 int main(int argc, char *argv[]){
-    printf("HELLO WORLD!\n");
+   int conexoes=0;
 
 //                  CRIAÇÃO DO SOCKET
     int socket_server = socket(AF_INET, SOCK_STREAM, 0);
@@ -96,8 +96,9 @@ int main(int argc, char *argv[]){
             close(socket_server);
             exit(1);
         } else {
+            conexoes++;
             printf("Conexão aceita com sucesso! :D\nCliente: %i\n",socket_cliente);
-            //printf("Número de conexões: %i",);
+            printf("Número de conexões: %i", conexoes);
         }
 
         memset(mensagem_read, 0x0, MAXBUF);
@@ -128,8 +129,6 @@ int main(int argc, char *argv[]){
                                     printf("GET executado com sucesso!\n");
                             break;
                             
-                            default:
-                            break;
                             }
                     } else {
                         perror("[!] ERRO AO EXECUTAR O MÉTODO SOLICITADO!\n");
@@ -148,7 +147,6 @@ int main(int argc, char *argv[]){
                     send(socket_cliente,mensagem, strlen(mensagem)+1, 0);
                     
                     close(socket_cliente);
-                    break;
                 }
     }
     printf("ENCERRANDO SERVIDOR . . . \n\n");
