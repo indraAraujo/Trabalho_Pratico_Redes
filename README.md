@@ -2,7 +2,7 @@
 
 ## Discentes: 
 ###           - Douglas Aquino T. Mendes
-###           - Indra Rani V. A. dos Santos
+###           - Indra Rani A. V. dos Santos
 <br>
 
 ```
