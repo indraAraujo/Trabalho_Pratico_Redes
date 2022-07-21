@@ -1,6 +1,6 @@
 /*  Trabalho Pratico - Redes 2022/1
         Douglas Aquino      - 1901570782
-        Indra Rani Araujo   - 190
+        Indra Rani Araujo   - 1901560662
 */
 
 //                  BIBLIOTECAS
@@ -167,6 +167,7 @@ void *atribuirCliente (){
                     
                     //free(mensagem);
 
+                    if(recv(socket_cliente, mensagem_read, MAXBUF, 0))
                     close(socket_cliente);
                     printf("Socket com cliente: encerrado!\n");
                 }
