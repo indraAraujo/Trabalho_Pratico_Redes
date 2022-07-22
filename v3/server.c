@@ -20,6 +20,7 @@ struct sockaddr_in endereco_server; //
 struct sockaddr_in endereco_cliente;//
 int socket_cliente;
 int socket_server;
+long int tamanho_arquivo;
 
 /*
     Limite máximo do tamanho do buffer que o servidor deve ter
@@ -233,6 +234,7 @@ void metodo_get(char solicitacao[]){
                 long int res = ftell(arquivo);
                 fseek(arquivo, 0, SEEK_SET);//Volta para o início
                 printf("Tamanho do Arquino: %li\n",res);
+                tamanho_arquivo = res;
 
                 //char conteudo[res];
 		escrever_cabecalho();
@@ -263,27 +265,22 @@ void metodo_get(char solicitacao[]){
 }
 
 void escrever_cabecalho(){
-    /*mensagem = (char*)malloc((sizeof("HTTP/1.1 ")
-    + sizeof(mensagem_servidor.codigo_estado)
-    + sizeof(mensagem_servidor.frase)
-    + sizeof(mensagem_servidor.dado))*sizeof(char)+5);
-    mensagem[0] = '\0';*/
-
+   
     //printf("\nCarta em branco: %s\nTamanho da Carta:%li\n",mensagem,strlen(mensagem));
     printf("Informações no SERVIDOR:\n");
     printf("S_VERSÃO: %s\n",mensagem_servidor.versao);
     printf("S_COD: %s\n",mensagem_servidor.codigo_estado);
     printf("S_STATUS: %s\n\n",mensagem_servidor.frase);
+    printf("S_TAMANHO: ");
 	
+    long int tamanho_arquivo_bytes = tamanho_arquivo/8;
+
 	send(socket_cliente,"HTTP/1.1 ", strlen("HTTP/1.1 "), 0);
 	send(socket_cliente,mensagem_servidor.codigo_estado, strlen(mensagem_servidor.codigo_estado), 0);
 	send(socket_cliente,mensagem_servidor.frase, strlen(mensagem_servidor.frase), 0);
+	send(socket_cliente,"Content-Length: ", strlen("Content-Length: "), 0);
+	send(socket_cliente,tamanho_arquivo_bytes, tamanho_arquivo, 0);
 
-
-    /*strcat(mensagem, mensagem_servidor.codigo_estado);
-    strcat(mensagem, "HTTP/1.1 ");
-    strcat(mensagem, mensagem_servidor.frase);
-    strcat(mensagem, mensagem_servidor.dado);*/
 
     //free(mensagem_servidor.dado);
 
