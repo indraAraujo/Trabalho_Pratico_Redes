@@ -1,6 +1,6 @@
 /*  Trabalho Pratico - Redes 2022/1
         Douglas Aquino      - 1901570782
-        Indra Rani Araujo   - 190
+        Indra Rani Araujo   - 1901560662
 */
 
 //                  BIBLIOTECAS
@@ -58,7 +58,7 @@ void *atribuirCliente(); //Inicia o tratamento do cliente em uma thread do servi
 void ler_mensagem(char mensagem[]);     //Separa o que nos interessa da mensagem do cliente
 int metodo(mensagem_pedido mensagem);   //Seleciona o método ideal para resposta
 void metodo_get(char solicitacao[]);    //Método get
-void escrever_mensagem();       //Monta, baseada na estrutura do protocolo, a mensagem a ser enviada pro cliente
+void escrever_cabecalho();       //Monta, baseada na estrutura do protocolo, a mensagem a ser enviada pro cliente
 void *atribuirCliente ();
 
 int main(int argc, char *argv[]){
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
             printf("Conexão aceita com sucesso! :D\nCliente: %i\n",socket_cliente);
             //printf("Número de conexões: %i",);
             pthread_create(&thread_id, NULL, atribuirCliente, NULL);
-                printf("Thread executada com sucesso!\n");
+            printf("Thread executada com sucesso!\n");
         }
     }
     printf("ENCERRANDO SERVIDOR . . . \n\n");
@@ -135,7 +135,7 @@ void *atribuirCliente (){
                         Retorna    <X>  para    <OUTRO METODO>
                     */
                     if (tipo_metodo!=0){
-                        printf("Metodo identificado com sucesso! :D\n");
+                        printf("Metodo executado com sucesso! :D\n");
 
                         switch (tipo_metodo){
                             case 1:
@@ -153,6 +153,9 @@ void *atribuirCliente (){
                         exit(1);
                     }
 
+                    //escrever_mensagem();
+                    //printf("MENSAGEM ESCRITA COM SUCESSO! :D\n");
+
                     /*if(strlen(mensagem)>1023){
                         printf("Atenção, Mensagem grande de mais.. será nescessário repartir o envio\n\n");
                     }
@@ -160,7 +163,11 @@ void *atribuirCliente (){
                         printf("Mensagem a ser enviada para o cliente:\n\n%s\n",mensagem_write);
                     */ // <-- Está dando SEGMENTATION FAULT
 
+                    //send(socket_cliente,mensagem, strlen(mensagem), 0);
                     
+                    //free(mensagem);
+
+                    if(recv(socket_cliente, mensagem_read, MAXBUF, 0))
                     close(socket_cliente);
                     printf("Socket com cliente: encerrado!\n");
                 }
@@ -194,7 +201,7 @@ int metodo(mensagem_pedido mensagem){
     if (strcmp(mensagem.metodo, "GET")==0){
         printf("O METODO É UM GET!\n");
         strcpy(mensagem_servidor.codigo_estado, "200 ");
-        strcpy(mensagem_servidor.frase, "OK \n");
+        strcpy(mensagem_servidor.frase, "OK ");
         return 1;
     } else {
         strcpy(mensagem_servidor.codigo_estado, "400 ");
@@ -227,18 +234,20 @@ void metodo_get(char solicitacao[]){
                 fseek(arquivo, 0, SEEK_SET);//Volta para o início
                 printf("Tamanho do Arquino: %li\n",res);
 
-                char conteudo[res];
+                //char conteudo[res];
+		escrever_cabecalho();
 
                 while(!feof(arquivo)){
                     fgets(linha,100,arquivo);
                     //printf("%s",linha);
-                    strcat(conteudo,linha);
+                    //strcat(conteudo,linha);
+			send(socket_cliente,linha, strlen(linha), 0);
                 }
                 printf("\n\n");
                 fclose(arquivo);
-                mensagem_servidor.dado = (char*)malloc(sizeof(conteudo)*sizeof(char));
-                mensagem_servidor.dado[0] = '\0';
-                strcpy(mensagem_servidor.dado,conteudo);
+                //mensagem_servidor.dado = (char*)malloc(sizeof(conteudo)*sizeof(char));
+                //mensagem_servidor.dado[0] = '\0';
+                //strcpy(mensagem_servidor.dado,conteudo);
                 //printf("MENSAGEM SERVIDOR.DADO:\n %s\n\n",mensagem_servidor.dado);
             }
     } else {
@@ -251,37 +260,34 @@ void metodo_get(char solicitacao[]){
         return conteudo;
         */
     }
-
-    escrever_mensagem();
-        printf("MENSAGEM ESCRITA COM SUCESSO! :D\n");
-    free(mensagem_servidor.dado);
 }
 
-void escrever_mensagem(){
-    mensagem = (char*)malloc((sizeof("HTTP/1.1 ")
+void escrever_cabecalho(){
+    /*mensagem = (char*)malloc((sizeof("HTTP/1.1 ")
     + sizeof(mensagem_servidor.codigo_estado)
     + sizeof(mensagem_servidor.frase)
     + sizeof(mensagem_servidor.dado))*sizeof(char)+5);
-    mensagem[0] = '\0';
+    mensagem[0] = '\0';*/
 
-    printf("\nCarta em branco: %s\nTamanho da Carta: %li\n",mensagem,strlen(mensagem));
+    //printf("\nCarta em branco: %s\nTamanho da Carta:%li\n",mensagem,strlen(mensagem));
     printf("Informações no SERVIDOR:\n");
     printf("S_VERSÃO: %s\n",mensagem_servidor.versao);
     printf("S_COD: %s\n",mensagem_servidor.codigo_estado);
     printf("S_STATUS: %s\n\n",mensagem_servidor.frase);
+	
+	send(socket_cliente,"HTTP/1.1 ", strlen("HTTP/1.1 "), 0);
+	send(socket_cliente,mensagem_servidor.codigo_estado, strlen(mensagem_servidor.codigo_estado), 0);
+	send(socket_cliente,mensagem_servidor.frase, strlen(mensagem_servidor.frase), 0);
 
 
-    strcat(mensagem, mensagem_servidor.codigo_estado);
+    /*strcat(mensagem, mensagem_servidor.codigo_estado);
     strcat(mensagem, "HTTP/1.1 ");
     strcat(mensagem, mensagem_servidor.frase);
-    strcat(mensagem, mensagem_servidor.dado);
+    strcat(mensagem, mensagem_servidor.dado);*/
 
-    printf("\nCarta escrita: %s\nTamanho da Carta: li\n",mensagem/*,strlen(mensagem)*/);
+    //free(mensagem_servidor.dado);
 
-    send(socket_cliente,mensagem, strlen(mensagem), 0);
-        printf("Mensagem enviada com sucesso!\n");
-                    
-    free(mensagem);
+    //printf("\nCarta escrita: %s\nTamanho da Carta:li\n",mensagem/*,strlen(mensagem)*/);
 
     //mensagem[strlen(mensagem)]='\0';
 
