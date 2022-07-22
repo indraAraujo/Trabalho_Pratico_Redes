@@ -153,24 +153,12 @@ void *atribuirCliente (){
                         close(socket_cliente);
                         exit(1);
                     }
-
-                    //escrever_mensagem();
-                    //printf("MENSAGEM ESCRITA COM SUCESSO! :D\n");
-
-                    /*if(strlen(mensagem)>1023){
-                        printf("Atenção, Mensagem grande de mais.. será nescessário repartir o envio\n\n");
-                    }
-
-                        printf("Mensagem a ser enviada para o cliente:\n\n%s\n",mensagem_write);
-                    */ // <-- Está dando SEGMENTATION FAULT
-
-                    //send(socket_cliente,mensagem, strlen(mensagem), 0);
                     
-                    //free(mensagem);
-
-                    if(recv(socket_cliente, mensagem_read, MAXBUF, 0))
-                    close(socket_cliente);
-                    printf("Socket com cliente: encerrado!\n");
+                    if(strcmp(mensagem_cliente.versao, "HTTP/1.0")==0){
+                        close(socket_cliente);
+                        printf("Socket com cliente: encerrado!\n");
+                    }
+                    
                 }
     printf("1;pthread_exit\n");
     pthread_exit(NULL);
