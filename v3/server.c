@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 
 //                  AGUARDA UM CLIENTE
     listen(socket_server, 1);
-        printf("AGUARDANDO CONEXÃO . . .\n");
+        printf("AGUARDANDO CONEXÃO . . .\n\n");
 
 //                  CONECTANDO . . .
     int tamanho = sizeof(struct sockaddr_in);
@@ -104,7 +104,6 @@ int main(int argc, char *argv[]){
             printf("Conexão aceita com sucesso! :D\nCliente: %i\n",socket_cliente);
             //printf("Número de conexões: %i",);
             pthread_create(&thread_id, NULL, atribuirCliente, NULL);
-            printf("Thread executada com sucesso!\n");
         }
     }
     printf("ENCERRANDO SERVIDOR . . . \n\n");
@@ -114,7 +113,7 @@ int main(int argc, char *argv[]){
 }
 
 void *atribuirCliente (){
-    printf("Nova thread criada com sucesso! :D\n\n");
+    printf("Nova thread criada com sucesso! :D\n");
 
     memset(mensagem_read, 0x0, MAXBUF);
             int receive_result = recv(socket_cliente, mensagem_read, MAXBUF, 0);
@@ -124,9 +123,6 @@ void *atribuirCliente (){
                     exit(1);
                 } else {
                     printf("Mensagem recebida com sucesso! :D\n\n");
-
-                    //mensagem_read[receive_result] = '\0';
-                    printf("Mensagem recebida do cliente:\n\n");
                     ler_mensagem(mensagem_read);
 
                     int tipo_metodo;
@@ -136,7 +132,7 @@ void *atribuirCliente (){
                         Retorna    <X>  para    <OUTRO METODO>
                     */
                     if (tipo_metodo!=0){
-                        printf("Metodo executado com sucesso! :D\n");
+                        printf("Metodo escolhido com sucesso! :D\n");
 
                         switch (tipo_metodo){
                             case 1:
@@ -180,17 +176,20 @@ void ler_mensagem(char mensagem[]){
 
     printf("Metodo: %s\nURL: %s\nVersão: %s\n\n",mensagem_cliente.metodo,mensagem_cliente.url,mensagem_cliente.versao);
 
-    stpcpy(mensagem_servidor.versao, mensagem_cliente.versao);
-
-    printf("Versão no servidor: %s\n\n",mensagem_servidor.versao);
-
+    stpcpy(mensagem_servidor.versao, mensagem_cliente.versao);//Coloca a mesma versão do cliente no servidor
 }
 
 int metodo(mensagem_pedido mensagem){
+    
+printf("- - debug: Versão no servidor: %s\n",mensagem_servidor.versao);//Até aqui a versão está ok
+
     if (strcmp(mensagem.metodo, "GET")==0){
         printf("O METODO É UM GET!\n");
         strcpy(mensagem_servidor.codigo_estado, "200 ");
-        strcpy(mensagem_servidor.frase, "OK\n");
+        strcpy(mensagem_servidor.frase, "OK\r\n");
+        
+printf("- - debug:[!] Versão no servidor: %s\n",mensagem_servidor.versao);//Aqui a versão some
+
         return 1;
     } else {
         strcpy(mensagem_servidor.codigo_estado, "400 ");
@@ -201,15 +200,36 @@ int metodo(mensagem_pedido mensagem){
 }
 
 void metodo_get(char solicitacao[]){
-
+    char backup_solicitacao[strlen(solicitacao)];   //O valor da solicitação está corropendo depois de tratar alguns casos
     char linha[100];
     FILE *arquivo;
+    char *tk;
+    char tipo_de_arquivo[4];
+            tipo_de_arquivo[0]='\0';
+            strcpy(backup_solicitacao,solicitacao);
+                printf("- - debug: Backup: %s\n",backup_solicitacao);
 
-    printf("Solicitação: %s\n",solicitacao);
+printf("- - debug: Solicitação: %s\n",solicitacao);
 
+//                      DESCOBRE O NOME DO ARQUIVO SOLICITADO
     char nome_do_arquivo[strlen(solicitacao-1)];    //Cria uma string de tamanho adequado
     strcpy(nome_do_arquivo,&solicitacao[1]);        //Copia a solicitação SEM '/'
-        printf("URL: %s\n",nome_do_arquivo);
+        printf("Nome do arquivo: %s\n\n",nome_do_arquivo);
+
+//strcpy(solicitacao,backup_solicitacao);
+printf("- - debug: Backup depois de descobrir o nome: %s\n",backup_solicitacao);
+printf("- - debug: Solicitação depois de descobrir o nome: %s\n",solicitacao);
+
+//                      DESCOBRE A EXTENÇÃO DO ARQUIVO
+    tk = strtok(nome_do_arquivo,".");   //solicitação.xxx
+    tk = strtok(NULL," ");          //Passa para a próxima parte da mensagem (.xxx)
+        printf("- - debug: O que ficou em tk: %s\n",tk);
+    if(tk != NULL){
+        strcpy(tipo_de_arquivo, tk);    //Salva o tipo do arquivo (.html ? .jppg ?)
+            printf("Extenção do arquivo solicitado: %s\n",tipo_de_arquivo);
+    }
+    
+printf("Solicitação depois de descobrir a extenção: %s\n\n",solicitacao);
 
     if (strcmp(solicitacao,"/")==0){
         printf("Solicitação da main pela localhost\n");
@@ -226,7 +246,7 @@ void metodo_get(char solicitacao[]){
                 printf("Tamanho do Arquino: %li\n",res);
                 tamanho_arquivo = res;
 
-		escrever_cabecalho();
+		escrever_cabecalho("html");
 
                 while(!feof(arquivo)){
                     fgets(linha,100,arquivo);
@@ -238,7 +258,7 @@ void metodo_get(char solicitacao[]){
             }
     } else {
         printf("Solicitação feita em localhost:%i%s\n",PORT,solicitacao);
-            arquivo = fopen(nome_do_arquivo,"r");
+            arquivo = fopen(nome_do_arquivo,"rb");
 
             if(arquivo == NULL){
                 printf("[!] ERRO AO ABRIR O ARQUIVO\n");
@@ -252,7 +272,7 @@ void metodo_get(char solicitacao[]){
                 printf("Tamanho do Arquino: %li\n",res);
                 tamanho_arquivo = res;
 
-		escrever_cabecalho();
+		escrever_cabecalho(tipo_de_arquivo);
 
                 while(!feof(arquivo)){
                     fgets(linha,100,arquivo);
@@ -263,9 +283,12 @@ void metodo_get(char solicitacao[]){
                 fclose(arquivo);
             }
     }
+    printf("- - debug: fora do ifelse do metodo get\n");
 }
 
-void escrever_cabecalho(){
+void escrever_cabecalho(char *content_type){
+    //"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %ld\r\n\r\n"
+
     printf("Informações no SERVIDOR:\n");
     printf("S_VERSÃO: %s\n",mensagem_servidor.versao);
     printf("S_COD: %s\n",mensagem_servidor.codigo_estado);
@@ -277,6 +300,17 @@ void escrever_cabecalho(){
 	send(socket_cliente,"HTTP/1.1 ", strlen("HTTP/1.1 "), 0);
 	send(socket_cliente,mensagem_servidor.codigo_estado, strlen(mensagem_servidor.codigo_estado), 0);
 	send(socket_cliente,mensagem_servidor.frase, strlen(mensagem_servidor.frase), 0);
+
+    if (strcmp(content_type,"html")==0){
+        printf("O arquivo é um html");
+        send(socket_cliente,"Content-Type: text/html\r\n", strlen("Content-Type: text/html\r\n"), 0);
+    }
+    if (strcmp(content_type,"jpg")==0){
+        printf("O arquivo é um jpg");
+        send(socket_cliente,"Content-Type: image/jpeg\r\n", strlen("Content-Type: image/jpeg\r\n"), 0);
+    }
+
 	send(socket_cliente,"Content-Length: ", strlen("Content-Length: "), 0);
 	send(socket_cliente,tamanho_arquivo_string, strlen(tamanho_arquivo_string), 0);
+    send(socket_cliente,"\r\n\r\n", strlen("\r\n\r\n"), 0);
 }
