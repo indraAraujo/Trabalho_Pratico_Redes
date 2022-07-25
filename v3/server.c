@@ -203,6 +203,7 @@ int metodo(mensagem_pedido mensagem){
 void metodo_get(char solicitacao[]){
 
     char linha[100];
+    FILE *arquivo;
 
     printf("Solicitação: %s\n",solicitacao);
 
@@ -212,7 +213,7 @@ void metodo_get(char solicitacao[]){
 
     if (strcmp(solicitacao,"/")==0){
         printf("Solicitação da main pela localhost\n");
-        FILE *arquivo = fopen("main.html","r");
+        arquivo = fopen("main.html","r");
             if(arquivo == NULL){
                 printf("[!] ERRO AO ABRIR O ARQUIVO\n");
             } else {
@@ -237,6 +238,30 @@ void metodo_get(char solicitacao[]){
             }
     } else {
         printf("Solicitação feita em localhost:%i%s\n",PORT,solicitacao);
+            arquivo = fopen(nome_do_arquivo,"r");
+
+            if(arquivo == NULL){
+                printf("[!] ERRO AO ABRIR O ARQUIVO\n");
+            } else {
+                printf("Arquivo aberto com sucesso! :D\n");
+
+                fseek(arquivo, 0, SEEK_END);//Vai para o final do arquivo
+                long int res = ftell(arquivo);
+                fseek(arquivo, 0, SEEK_SET);//Volta para o início
+                
+                printf("Tamanho do Arquino: %li\n",res);
+                tamanho_arquivo = res;
+
+		escrever_cabecalho();
+
+                while(!feof(arquivo)){
+                    fgets(linha,100,arquivo);
+			        send(socket_cliente,linha, strlen(linha), 0);
+                    linha[0] = '\0';
+                }
+                printf("\n\n");
+                fclose(arquivo);
+            }
     }
 }
 
