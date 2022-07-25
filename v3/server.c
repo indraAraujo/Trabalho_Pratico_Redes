@@ -55,12 +55,12 @@ mensagem_pedido mensagem_cliente;
 
 
 //                  FUNÇÕES E PROCEDIMENTOS
-void *atribuirCliente(); //Inicia o tratamento do cliente em uma thread do servidor
-void ler_mensagem(char mensagem[]);     //Separa o que nos interessa da mensagem do cliente
-int metodo(mensagem_pedido mensagem);   //Seleciona o método ideal para resposta
-void metodo_get(char solicitacao[]);    //Método get
-void escrever_cabecalho();       //Monta, baseada na estrutura do protocolo, a mensagem a ser enviada pro cliente
-void *atribuirCliente ();
+void *atribuirCliente();                    //Inicia o tratamento do cliente em uma thread do servidor
+void ler_mensagem(char mensagem[]);         //Separa o que nos interessa da mensagem do cliente
+int  metodo(mensagem_pedido mensagem);      //Seleciona o método ideal para resposta
+void metodo_get(char solicitacao[]);        //Método get
+void escrever_cabecalho();                  //Monta, baseada na estrutura do protocolo, a mensagem a ser enviada pro cliente
+void *atribuirCliente ();                   //
 
 int main(int argc, char *argv[]){
    pthread_t thread_id;
@@ -190,11 +190,11 @@ int metodo(mensagem_pedido mensagem){
     if (strcmp(mensagem.metodo, "GET")==0){
         printf("O METODO É UM GET!\n");
         strcpy(mensagem_servidor.codigo_estado, "200 ");
-        strcpy(mensagem_servidor.frase, "OK ");
+        strcpy(mensagem_servidor.frase, "OK\n");
         return 1;
     } else {
         strcpy(mensagem_servidor.codigo_estado, "400 ");
-        strcpy(mensagem_servidor.frase, "Erro de sintaxe ");
+        strcpy(mensagem_servidor.frase, "Erro de sintaxe\n");
         printf("[!] ERRO: MÉTODO NÃO IDENTIFICADO\n");
         return 0;
     }
@@ -216,64 +216,42 @@ void metodo_get(char solicitacao[]){
             if(arquivo == NULL){
                 printf("[!] ERRO AO ABRIR O ARQUIVO\n");
             } else {
-                printf("Arquivo aberto com sucesso! :D\nARQUIVO:\n\n");
+                printf("Arquivo aberto com sucesso! :D\n");
 
                 fseek(arquivo, 0, SEEK_END);//Vai para o final do arquivo
                 long int res = ftell(arquivo);
                 fseek(arquivo, 0, SEEK_SET);//Volta para o início
+                
                 printf("Tamanho do Arquino: %li\n",res);
                 tamanho_arquivo = res;
 
-                //char conteudo[res];
 		escrever_cabecalho();
 
                 while(!feof(arquivo)){
                     fgets(linha,100,arquivo);
-                    //printf("%s",linha);
-                    //strcat(conteudo,linha);
-			send(socket_cliente,linha, strlen(linha), 0);
+			        send(socket_cliente,linha, strlen(linha), 0);
+                    linha[0] = '\0';
                 }
                 printf("\n\n");
                 fclose(arquivo);
-                //mensagem_servidor.dado = (char*)malloc(sizeof(conteudo)*sizeof(char));
-                //mensagem_servidor.dado[0] = '\0';
-                //strcpy(mensagem_servidor.dado,conteudo);
-                //printf("MENSAGEM SERVIDOR.DADO:\n %s\n\n",mensagem_servidor.dado);
             }
     } else {
-        printf("Solicitação feita em localhoslloc():%i%s\n",PORT,solicitacao);
-        /*
-        FILE *arquivo;
-        char conteudo[strlen(arquivo)];
-        //[!] TERMINAR CODIGO PARA SOLICITAÇÃO DE OUTRAS PAGINAS
-
-        return conteudo;
-        */
+        printf("Solicitação feita em localhost:%i%s\n",PORT,solicitacao);
     }
 }
 
 void escrever_cabecalho(){
-   
-    //printf("\nCarta em branco: %s\nTamanho da Carta:%li\n",mensagem,strlen(mensagem));
     printf("Informações no SERVIDOR:\n");
     printf("S_VERSÃO: %s\n",mensagem_servidor.versao);
     printf("S_COD: %s\n",mensagem_servidor.codigo_estado);
     printf("S_STATUS: %s\n\n",mensagem_servidor.frase);
-    printf("S_TAMANHO: ");
 	
-    long int tamanho_arquivo_bytes = tamanho_arquivo/8;
+    char tamanho_arquivo_string[6];
+    sprintf(tamanho_arquivo_string,"%li", tamanho_arquivo);     //Transforma o tamanho do arquivo em uma string
 
 	send(socket_cliente,"HTTP/1.1 ", strlen("HTTP/1.1 "), 0);
 	send(socket_cliente,mensagem_servidor.codigo_estado, strlen(mensagem_servidor.codigo_estado), 0);
 	send(socket_cliente,mensagem_servidor.frase, strlen(mensagem_servidor.frase), 0);
 	send(socket_cliente,"Content-Length: ", strlen("Content-Length: "), 0);
-	send(socket_cliente,tamanho_arquivo_bytes, tamanho_arquivo, 0);
-
-
-    //free(mensagem_servidor.dado);
-
-    //printf("\nCarta escrita: %s\nTamanho da Carta:li\n",mensagem/*,strlen(mensagem)*/);
-
-    //mensagem[strlen(mensagem)]='\0';
-
+	send(socket_cliente,tamanho_arquivo_string, strlen(tamanho_arquivo_string), 0);
 }
