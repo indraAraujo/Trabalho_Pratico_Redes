@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include <time.h>
 
+#include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -21,6 +22,10 @@ struct sockaddr_in endereco_cliente;//
 int socket_cliente;
 int socket_server;
 long int tamanho_arquivo;
+clock_t tInicio, tFim;
+double tDecorrido;
+int quantidade_clientes = 0;
+
 
 /*
     Limite máximo do tamanho do buffer que o servidor deve ter
@@ -64,6 +69,7 @@ void *atribuirCliente ();                   //
 
 int main(int argc, char *argv[]){
    pthread_t thread_id;
+   printf("Argumento: %s\n\n",argv[1]);
 //                  CRIAÇÃO DO SOCKET
      socket_server = socket(AF_INET, SOCK_STREAM, 0);
         if(socket_server==-1){
@@ -87,23 +93,32 @@ int main(int argc, char *argv[]){
         }
 
 //                  AGUARDA UM CLIENTE
-    listen(socket_server, 1);
+    listen(socket_server, atoi(argv[1]));
         printf("AGUARDANDO CONEXÃO . . .\n\n");
 
 //                  CONECTANDO . . .
     int tamanho = sizeof(struct sockaddr_in);
 
 
-    while ((socket_cliente = accept(socket_server, (struct sockaddr *)&endereco_cliente, (socklen_t *)&tamanho))){
+    while ( (socket_cliente = accept(socket_server, (struct sockaddr *)&endereco_cliente, (socklen_t *)&tamanho)) && quantidade_clientes<=atoi(argv[1]) ){
 //  Aceita conexões e salva em um novo socket
+	
         if (socket_cliente < 0){
             perror("[!] ERRO AO ACEITAR CONEXÃO\n");
             close(socket_server);
             exit(1);
         } else {
+		quantidade_clientes++;
+		printf("Número de conexões: %i",quantidade_clientes);
+	if(quantidade_clientes>atoi(argv[1])){
+		printf("\nlimite de clientes!!!!\n\n");
+		close(socket_cliente);
+	}else{
             printf("Conexão aceita com sucesso! :D\nCliente: %i\n",socket_cliente);
-            //printf("Número de conexões: %i",);
+		tInicio = clock();
+            
             pthread_create(&thread_id, NULL, atribuirCliente, NULL);
+	}
         }
     }
     printf("ENCERRANDO SERVIDOR . . . \n\n");
@@ -152,13 +167,16 @@ void *atribuirCliente (){
                     
                     if(strcmp(mensagem_cliente.versao, "HTTP/1.0")==0){
                         close(socket_cliente);
+			quantidade_clientes--;
                         printf("Socket com cliente: encerrado!\n");
                     }
                     
                 }
-    printf("1;pthread_exit\n");
-    pthread_exit(NULL);
-    printf("2;pthread_exit\n");
+	tFim = clock();
+	tDecorrido = ( ((double)(tFim - tInicio)) / (CLOCKS_PER_SEC / 1000));
+	printf("Tempo decorrido: %lf\n",tDecorrido);
+quantidade_clientes--;
+pthread_exit(NULL);
 }
 
 void ler_mensagem(char mensagem[]){
@@ -200,24 +218,24 @@ printf("- - debug:[!] Versão no servidor: %s\n",mensagem_servidor.versao);//Aqu
 }
 
 void metodo_get(char solicitacao[]){
-    char backup_solicitacao[strlen(solicitacao)];   //O valor da solicitação está corropendo depois de tratar alguns casos
-    char linha[100];
+    //char backup_solicitacao[strlen(solicitacao)];   //O valor da solicitação está corropendo depois de tratar alguns casos
+    char *buff_conteudo,linha[100];
     FILE *arquivo;
     char *tk;
     char tipo_de_arquivo[4];
             tipo_de_arquivo[0]='\0';
-            strcpy(backup_solicitacao,solicitacao);
-                printf("- - debug: Backup: %s\n",backup_solicitacao);
+            //strcpy(backup_solicitacao,solicitacao);
+                //printf("- - debug: Backup: %s\n",backup_solicitacao);
 
 printf("- - debug: Solicitação: %s\n",solicitacao);
 
 //                      DESCOBRE O NOME DO ARQUIVO SOLICITADO
     char nome_do_arquivo[strlen(solicitacao-1)];    //Cria uma string de tamanho adequado
     strcpy(nome_do_arquivo,&solicitacao[1]);        //Copia a solicitação SEM '/'
-        printf("Nome do arquivo: %s\n\n",nome_do_arquivo);
+        //printf("Nome do arquivo: %s\n\n",nome_do_arquivo);
 
 //strcpy(solicitacao,backup_solicitacao);
-printf("- - debug: Backup depois de descobrir o nome: %s\n",backup_solicitacao);
+//printf("- - debug: Backup depois de descobrir o nome: %s\n",backup_solicitacao);
 printf("- - debug: Solicitação depois de descobrir o nome: %s\n",solicitacao);
 
 //                      DESCOBRE A EXTENÇÃO DO ARQUIVO
@@ -226,10 +244,14 @@ printf("- - debug: Solicitação depois de descobrir o nome: %s\n",solicitacao);
         printf("- - debug: O que ficou em tk: %s\n",tk);
     if(tk != NULL){
         strcpy(tipo_de_arquivo, tk);    //Salva o tipo do arquivo (.html ? .jppg ?)
-            printf("Extenção do arquivo solicitado: %s\n",tipo_de_arquivo);
+            printf("Extenção do arquivo solicitado: %s\n\n",tipo_de_arquivo);
     }
+	strcat(nome_do_arquivo,".");
+	strcat(nome_do_arquivo,tipo_de_arquivo);
     
-printf("Solicitação depois de descobrir a extenção: %s\n\n",solicitacao);
+printf("- - Solicitação depois de descobrir a extenção: %s\n",solicitacao);
+//printf("- - Backup depois de descobrir a extenção: %s\n",backup_solicitacao);
+printf("- - Nome do arquivo depois de descobrir a extenção: %s\n\n",nome_do_arquivo);
 
     if (strcmp(solicitacao,"/")==0){
         printf("Solicitação da main pela localhost\n");
@@ -248,11 +270,9 @@ printf("Solicitação depois de descobrir a extenção: %s\n\n",solicitacao);
 
 		escrever_cabecalho("html");
 
-                while(!feof(arquivo)){
-                    fgets(linha,100,arquivo);
-			        send(socket_cliente,linha, strlen(linha), 0);
-                    linha[0] = '\0';
-                }
+               buff_conteudo = malloc(res);
+		fread(buff_conteudo,sizeof(char),res,arquivo);
+		send(socket_cliente,buff_conteudo, strlen(buff_conteudo), 0);
                 printf("\n\n");
                 fclose(arquivo);
             }
@@ -274,11 +294,11 @@ printf("Solicitação depois de descobrir a extenção: %s\n\n",solicitacao);
 
 		escrever_cabecalho(tipo_de_arquivo);
 
-                while(!feof(arquivo)){
-                    fgets(linha,100,arquivo);
-			        send(socket_cliente,linha, strlen(linha), 0);
-                    linha[0] = '\0';
-                }
+		buff_conteudo = malloc(res);
+		fread(buff_conteudo,sizeof(char),res,arquivo);
+		send(socket_cliente,buff_conteudo, strlen(buff_conteudo), 0);
+
+                //---------------------------------------------------------------------------------------------------------
                 printf("\n\n");
                 fclose(arquivo);
             }
@@ -302,15 +322,15 @@ void escrever_cabecalho(char *content_type){
 	send(socket_cliente,mensagem_servidor.frase, strlen(mensagem_servidor.frase), 0);
 
     if (strcmp(content_type,"html")==0){
-        printf("O arquivo é um html");
+        printf("O arquivo é um html\n");
         send(socket_cliente,"Content-Type: text/html\r\n", strlen("Content-Type: text/html\r\n"), 0);
     }
-    if (strcmp(content_type,"jpg")==0){
-        printf("O arquivo é um jpg");
+    if (strcmp(content_type,"jpg")==0 || strcmp(content_type,"jpeg")==0){
+        printf("O arquivo é um jpg\n");
         send(socket_cliente,"Content-Type: image/jpeg\r\n", strlen("Content-Type: image/jpeg\r\n"), 0);
     }
 
 	send(socket_cliente,"Content-Length: ", strlen("Content-Length: "), 0);
 	send(socket_cliente,tamanho_arquivo_string, strlen(tamanho_arquivo_string), 0);
-    send(socket_cliente,"\r\n\r\n", strlen("\r\n\r\n"), 0);
+    	send(socket_cliente,"\r\n\r\n", strlen("\r\n\r\n"), 0);
 }
