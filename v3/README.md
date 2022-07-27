@@ -10,9 +10,9 @@ Alunos:
 
 Usando uma vazão máxima do servidor de `x`.
 ```
-gcc -pthread server.c -o server x
+gcc -pthread server.c -o server 
 
-./server
+./server x
 
 ````
 
